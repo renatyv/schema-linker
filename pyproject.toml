@@ -1,0 +1,36 @@
+[project]
+name = "schema-linker"
+version = "0.1.0"
+description = "Discover declared PK/FK joins and inferred join candidates across database tables for text-to-SQL and query authoring."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENCE"]
+dependencies = [
+    "datasketch>=1.6",
+    "sqlalchemy>=2.0",
+    "pymysql>=1.1",
+    "psycopg>=3.2",
+    "duckdb-engine>=0.13"
+]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+authors = [
+  {name = "Renat Iuldashev", email = "renatyv@gmail.com"}
+]
+
+[project.scripts]
+schema-linker = "schema_linker.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/schema_linker"]
