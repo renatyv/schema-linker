@@ -40,6 +40,14 @@ def build_arg_parser(prog: str | None = None) -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--show-evidence",
+        action="store_true",
+        help=(
+            "Include evidence labels on inferred links. Omitted by default to "
+            "save tokens."
+        ),
+    )
+    parser.add_argument(
         "--containment-threshold",
         type=float,
         default=0.8,
@@ -80,6 +88,7 @@ def main(argv: list[str] | None = None, prog: str | None = None) -> int:
         query_timeout=args.query_timeout,
         schema=resolve_schema(args),
         include_technical_tables=args.include_technical_tables,
+        show_evidence=args.show_evidence,
     )
     engine = create_engine(url)
     progress_bar = ProgressBar("Linking", 0)

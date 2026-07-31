@@ -18,6 +18,7 @@ class SchemaLinkOptions:
     query_timeout: int = DEFAULT_QUERY_TIMEOUT
     schema: str | None = None
     include_technical_tables: bool = False
+    show_evidence: bool = False
 
 
 @dataclass(frozen=True)

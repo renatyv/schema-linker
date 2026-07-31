@@ -54,6 +54,10 @@ Confirms or rejects LSH candidates; catches approximation false positives.
 
 Do not include inferred links if they have fewer than three pieces of evidence. Sort inferred links by evidence: more evidence ranks higher in the list.
 
+Evidence labels are omitted from the output by default to save tokens. They can be surfaced on demand with the `--show-evidence` flag, which attaches the supporting evidence to each inferred column. Evidence is pairwise, so it is shown per column (from that column's strongest inferred edge) rather than aggregated across the whole cluster, which would merge mutually-exclusive cardinality labels and lose the link to a specific column.
+
+Inferred links are grouped by shared value domain: columns that join to the same primary key (or simply share a value set) form one cluster. Each cluster is headed by its anchor primary key when one exists; members already covered by a declared FK are listed separately as context, and only genuinely new inferred columns are the signal. Clusters whose every column is already declared are omitted because they add no new information. The pairwise explosion from transitive containment is collapsed this way.
+
 Output example:
 ```
 - version: 0.1.0
@@ -62,16 +66,22 @@ Output example:
 
 ## Declared PK/FK Links
 
-| From | To |
-|---|---|
-| action_status_history.action_history_id | action_history.id |
-| action_status_history.state_history_id | robot_state_history.id |
-
+action_status_history.action_history_id -> action_history.id
+action_status_history.state_history_id -> robot_state_history.id
 
 ## Inferred Links
 
-| From | To | Evidence |
-|---|---|---|
-| action_history.robot_id | box_movement_history.robot_id | minhash containment candidate, name match, shared name tokens, similar names, type match |
-| action_history.robot_id | move_robot.robot_id | minhash containment candidate, name match, shared name tokens, similar names, type match |
+### robot.id
+- inferred: action_history.robot_id, box_movement_history.robot_id, move_robot.robot_id
+- declared: box.held_by_robot_id
+```
+
+With `--show-evidence`, each inferred column carries the evidence from its strongest edge:
+```
+### robot.id
+- inferred:
+  - action_history.robot_id: name match, table-name id match, type match
+  - box_movement_history.robot_id: name match, shared name tokens, type match
+  - move_robot.robot_id: minhash containment candidate, moderate ID-like cardinality, type match
+- declared: box.held_by_robot_id
 ```

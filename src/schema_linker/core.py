@@ -57,6 +57,7 @@ def link_schema(
                 url,
                 [],
                 [],
+                show_evidence=options.show_evidence,
             )
         metadata = MetaData()
         tables = []
@@ -91,4 +92,5 @@ def link_schema(
         url,
         declared_links,
         inferred_links,
+        show_evidence=options.show_evidence,
     )

@@ -31,7 +31,7 @@ The schema links `.md` file contains:
 
 - Declared primary-key and foreign-key links from database constraints.
 - Inferred links from name, type, cardinality, and containment evidence.
-- Evidence labels for each inferred join candidate.
+- Evidence labels for each inferred join candidate. Omitted by default to save tokens; include them with `--show-evidence`.
 
 Treat inferred links as candidates, not guaranteed joins. Validate them against the user question and the table data before writing final SQL.
 
@@ -110,6 +110,7 @@ Options:
 - `--include-technical-tables`: link migration/framework tables that are skipped by default.
 - `--containment-threshold 0.8`: minimum exact containment for inferred links.
 - `--max-distinct-values 10000`: maximum distinct values loaded per candidate column.
+- `--show-evidence`: include evidence labels on inferred links (off by default to save tokens).
 
 ## Python API
 
