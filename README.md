@@ -1,11 +1,15 @@
 # Schema Linker
+
+![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)
+
 **Agent skill: [`skills/SKILL.md`](skills/SKILL.md)**
 
 **Spec: [`spec/schema_linking.md`](spec/schema_linking.md)**
 
 Schema Linker discovers how tables relate in an existing database and emits a compact, LLM-ready Markdown report of declared PK/FK joins plus inferred join candidates with evidence labels. Useful for text-to-SQL, multi-table query authoring, and join-path debugging. Supports SQLite, PostgreSQL, MySQL, MariaDB, and DuckDB. Requires Python >= 3.10.
 
-It produces a schema-link report (`<database>/<schema>_schema_links.md`): declared PK/FK relationships and inferred join candidates.
+It writes one Markdown report per schema at `<db_name>/<schema>_schema_links.md` (for example `app/main_schema_links.md`), where `<db_name>` is the database or file name without its directory or extension. Use `--output` to change the directory.
 
 AI agents and text-to-SQL pipelines can read this context instead of guessing join paths.
 
@@ -23,7 +27,7 @@ uvx schema-linker --db-type mysql --user user --password password --database db 
 
 This creates a report at `db/sch_schema_links.md`.
 
-The schema-link report lists declared PK/FK joins and inferred join candidates with evidence labels. See [What The Output Contains](#what-the-output-contains) for details.
+The output directory defaults to the database name (`<db_name>/`). For SQLite/DuckDB the schema is `main`, so `--database path/to/app.sqlite` writes `app/main_schema_links.md`. Override the directory with `--output`. See [What The Output Contains](#what-the-output-contains) for what's inside.
 
 ## What The Output Contains
 
@@ -34,6 +38,74 @@ The schema links `.md` file contains:
 - Evidence labels for each inferred join candidate. Omitted by default to save tokens; include them with `--show-evidence`.
 
 Treat inferred links as candidates, not guaranteed joins. Validate them against the user question and the table data before writing final SQL.
+
+## How It Works
+
+Declared links are read straight from the database's primary/foreign-key constraints. For everything not already covered by an FK, Schema Linker runs a cheap-to-expensive pipeline (full details in [`spec/schema_linking.md`](spec/schema_linking.md)):
+
+1. **Metadata** — skip FK-covered columns and pairs with mismatched data types.
+2. **Cardinality** — estimate `COUNT(DISTINCT col)`; drop near-unique free text, keep moderate, ID-like columns.
+3. **Name/type** — match column names (Levenshtein-style similarity) to find strong candidates worth a spot-check.
+4. **Containment** — extract distinct values only for the survivors, then use MinHash + LSH Ensemble to find one-way set containment (this handles unequal cardinalities, unlike Jaccard).
+5. **Verify** — confirm each candidate with an exact containment check and require at least three independent pieces of evidence.
+
+A link survives only when name, type, cardinality, and containment agree — which is why evidence is reported per signal.
+
+## Sample Output
+
+This is the real report produced by the [runnable example](#runnable-example) below (a tiny SQLite shop database):
+
+````markdown
+# Schema Links
+
+- version: 0.0.1
+- dialect: sqlite
+- database: examples/shop.sqlite
+- schema: main
+
+## Declared PK/FK Links
+
+order_lines.order_id -> orders.order_id
+orders.customer_id -> customers.customer_id
+
+## Inferred Links
+
+### customers.customer_id
+- inferred: support_tickets.customer_id
+- declared: orders.customer_id
+````
+
+- **Declared PK/FK Links** come straight from database constraints — the safe, guaranteed joins.
+- **Inferred Links** are grouped by shared value domain. Under each anchor, `inferred:` lists new join candidates and `declared:` lists columns already covered by a foreign key (shown for context).
+
+Here `support_tickets.customer_id` is flagged as a likely join onto `customers.customer_id` even though there is no FK constraint — exactly the case text-to-SQL agents usually have to guess.
+
+Add `--show-evidence` to see the signal behind each candidate (real output from the same database):
+
+````markdown
+### customers.customer_id
+- inferred:
+  - support_tickets.customer_id: minhash containment candidate, moderate ID-like cardinality, name match, shared name tokens, similar names, type match
+- declared: orders.customer_id
+````
+
+Evidence labels report the *why* (`name match`, `table-name id match`, `shared name tokens`, `similar names`, `type match`, `minhash containment candidate`) and the *confidence* (`same distinct count`, `similar distinct counts`, `low cardinality`, `moderate cardinality`, `moderate ID-like cardinality`).
+
+## Runnable Example
+
+Reproduce the output above against a seedable SQLite database in [`examples/`](examples):
+
+```bash
+# 1. build examples/shop.sqlite (customers, orders, order_lines, support_tickets)
+python examples/seed_shop.py
+
+# 2. link it; --output examples writes examples/main_schema_links.md
+schema-linker --db-type sqlite --database examples/shop.sqlite --output examples
+
+cat examples/main_schema_links.md
+```
+
+The fixture deliberately leaves `support_tickets.customer_id` without a foreign key, so inference — not the catalog — surfaces that join. Re-run with `schema-linker ... --show-evidence` to see the evidence labels above.
 
 ## Database Examples
 
