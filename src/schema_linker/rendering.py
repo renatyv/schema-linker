@@ -37,9 +37,7 @@ def render_markdown(
             to_label = ", ".join(
                 f"{link.to_table}.{column}" for column in link.to_columns
             )
-            lines.append(
-                f"| {markdown_cell(from_label)} | {markdown_cell(to_label)} |"
-            )
+            lines.append(f"| {markdown_cell(from_label)} | {markdown_cell(to_label)} |")
     else:
         lines.append("No declared PK/FK links found.")
 

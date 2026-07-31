@@ -45,7 +45,11 @@ def check_permissions(
     elif dialect == "duckdb":
         accessible = list(table_names)
         inaccessible = []
-        stats = {"duckdb_tables": _probe_success(conn, "SELECT 1 FROM duckdb_tables() LIMIT 1")}
+        stats = {
+            "duckdb_tables": _probe_success(
+                conn, "SELECT 1 FROM duckdb_tables() LIMIT 1"
+            )
+        }
     else:
         accessible = list(table_names)
         inaccessible = []
@@ -122,7 +126,9 @@ def _check_mysql_tables(
         if ok:
             accessible.append(table_name)
         else:
-            inaccessible.append((table_name, "SELECT privilege missing or table inaccessible"))
+            inaccessible.append(
+                (table_name, "SELECT privilege missing or table inaccessible")
+            )
     return accessible, inaccessible
 
 
@@ -152,7 +158,9 @@ def _probe_success(conn: Connection, sql: str, params: dict | None = None) -> bo
 def _check_table_exists(conn: Connection, table_name: str) -> bool:
     try:
         row = conn.execute(
-            text("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = :name LIMIT 1"),
+            text(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = :name LIMIT 1"
+            ),
             {"name": table_name},
         ).first()
         return row is not None

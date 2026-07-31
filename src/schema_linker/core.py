@@ -12,8 +12,8 @@ from schema_linker.metadata import (
     collect_declared_links,
 )
 from schema_linker.models import SchemaLinkOptions, SchemaLinkProgress
-from schema_linker.rendering import render_markdown
 from schema_linker.permissions import check_permissions, format_warnings
+from schema_linker.rendering import render_markdown
 from schema_linker.shared import is_technical_table
 
 _logger = logging.getLogger("schema_linker")
@@ -27,9 +27,7 @@ def link_schema(
     inspector = inspect(engine)
     table_names = sorted(inspector.get_table_names(schema=options.schema))
     if not options.include_technical_tables:
-        table_names = [
-            table for table in table_names if not is_technical_table(table)
-        ]
+        table_names = [table for table in table_names if not is_technical_table(table)]
     if options.include_tables is not None:
         table_names = [
             table for table in table_names if table in options.include_tables
@@ -64,9 +62,7 @@ def link_schema(
         tables = []
         for index, table_name in enumerate(table_names, start=1):
             if progress is not None:
-                progress(
-                    index - 1, len(table_names), f"reflecting {table_name}"
-                )
+                progress(index - 1, len(table_names), f"reflecting {table_name}")
             tables.append(
                 Table(
                     table_name,

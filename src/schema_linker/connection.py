@@ -6,8 +6,7 @@ import os
 from typing import Any
 
 from sqlalchemy import inspect
-from sqlalchemy.engine import Engine
-from sqlalchemy.engine import URL
+from sqlalchemy.engine import URL, Engine
 
 DRIVER_NAMES = {
     "sqlite": "sqlite",
@@ -23,6 +22,7 @@ DEFAULT_PORTS = {
     "mariadb": 3306,
 }
 
+
 def add_connection_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--db-type",
@@ -35,20 +35,30 @@ def add_connection_arguments(parser: argparse.ArgumentParser) -> None:
         default=None,
         help="Database name, or file path for SQLite/DuckDB. Defaults to SCHEMA_LINKER_DATABASE.",
     )
-    parser.add_argument("--host", default=None, help="Database host. Defaults to SCHEMA_LINKER_DB_HOST or localhost.")
+    parser.add_argument(
+        "--host",
+        default=None,
+        help="Database host. Defaults to SCHEMA_LINKER_DB_HOST or localhost.",
+    )
     parser.add_argument(
         "--port",
         type=int,
         default=None,
         help="Database port. Defaults to SCHEMA_LINKER_DB_PORT or the database server default.",
     )
-    parser.add_argument("--user", default=None, help="Database user. Defaults to SCHEMA_LINKER_DB_USER.")
+    parser.add_argument(
+        "--user", default=None, help="Database user. Defaults to SCHEMA_LINKER_DB_USER."
+    )
     parser.add_argument(
         "--password",
         default=None,
         help="Database password. Defaults to SCHEMA_LINKER_DB_PASSWORD, then a secure prompt for server databases.",
     )
-    parser.add_argument("--ask-password", action="store_true", help="Prompt securely for the database password.")
+    parser.add_argument(
+        "--ask-password",
+        action="store_true",
+        help="Prompt securely for the database password.",
+    )
     parser.add_argument(
         "--schema",
         default=None,
@@ -56,7 +66,9 @@ def add_connection_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def resolve_database_url(args: argparse.Namespace, parser: argparse.ArgumentParser) -> URL:
+def resolve_database_url(
+    args: argparse.Namespace, parser: argparse.ArgumentParser
+) -> URL:
     db_type = _value(args, "db_type", "SCHEMA_LINKER_DB_TYPE")
     if not db_type:
         parser.error(
@@ -64,7 +76,9 @@ def resolve_database_url(args: argparse.Namespace, parser: argparse.ArgumentPars
             "--db-type sqlite --database path/to.db, or set SCHEMA_LINKER_DB_TYPE and SCHEMA_LINKER_DATABASE."
         )
     if db_type not in DRIVER_NAMES:
-        parser.error(f"unsupported --db-type {db_type!r}; choose one of: {', '.join(sorted(DRIVER_NAMES))}")
+        parser.error(
+            f"unsupported --db-type {db_type!r}; choose one of: {', '.join(sorted(DRIVER_NAMES))}"
+        )
 
     database = _value(args, "database", "SCHEMA_LINKER_DATABASE")
     if not database:
@@ -74,12 +88,22 @@ def resolve_database_url(args: argparse.Namespace, parser: argparse.ArgumentPars
         return URL.create(DRIVER_NAMES[db_type], database=database)
 
     host = _value(args, "host", "SCHEMA_LINKER_DB_HOST") or "localhost"
-    port = _optional_int(_value(args, "port", "SCHEMA_LINKER_DB_PORT"), parser) or DEFAULT_PORTS[db_type]
+    port = (
+        _optional_int(_value(args, "port", "SCHEMA_LINKER_DB_PORT"), parser)
+        or DEFAULT_PORTS[db_type]
+    )
     user = _value(args, "user", "SCHEMA_LINKER_DB_USER")
     password = _value(args, "password", "SCHEMA_LINKER_DB_PASSWORD")
     if args.ask_password or password is None:
         password = getpass.getpass("Database password: ")
-    return URL.create(DRIVER_NAMES[db_type], username=user, password=password, host=host, port=port, database=database)
+    return URL.create(
+        DRIVER_NAMES[db_type],
+        username=user,
+        password=password,
+        host=host,
+        port=port,
+        database=database,
+    )
 
 
 def resolve_schema(args: argparse.Namespace) -> str | None:

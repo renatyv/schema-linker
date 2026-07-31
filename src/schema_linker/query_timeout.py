@@ -66,7 +66,10 @@ def _apply_mysql_timeout(conn: Connection, seconds: int) -> None:
 def is_query_timeout(exc: SQLAlchemyError) -> bool:
     """Return True if ``exc`` represents a server-side statement-timeout abort."""
     message = str(exc).lower()
-    if "statement timeout" in message or "canceling statement due to statement timeout" in message:
+    if (
+        "statement timeout" in message
+        or "canceling statement due to statement timeout" in message
+    ):
         return True
     if "maximum statement execution time" in message or "max_statement_time" in message:
         return True

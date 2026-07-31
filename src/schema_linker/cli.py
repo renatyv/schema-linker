@@ -29,12 +29,8 @@ def build_arg_parser(prog: str | None = None) -> argparse.ArgumentParser:
     )
     add_connection_arguments(parser)
     parser.add_argument("--output", help="Output directory. Defaults to <database>/.")
-    parser.add_argument(
-        "--include-tables", help="Comma-separated table allowlist."
-    )
-    parser.add_argument(
-        "--exclude-tables", help="Comma-separated table denylist."
-    )
+    parser.add_argument("--include-tables", help="Comma-separated table allowlist.")
+    parser.add_argument("--exclude-tables", help="Comma-separated table denylist.")
     parser.add_argument(
         "--include-technical-tables",
         action="store_true",
@@ -103,22 +99,17 @@ def main(argv: list[str] | None = None, prog: str | None = None) -> int:
     output_dir = (
         Path(args.output)
         if args.output
-        else default_output_path(
-            args.database or os.environ["SCHEMA_LINKER_DATABASE"]
-        )
+        else default_output_path(args.database or os.environ["SCHEMA_LINKER_DATABASE"])
     )
     try:
         for schema in schemas:
             active_schema = schema
             schema_options = replace(options, schema=schema)
-            output = link_schema(
-                engine, schema_options, progress=show_progress
-            )
+            output = link_schema(engine, schema_options, progress=show_progress)
             output_dir.mkdir(parents=True, exist_ok=True)
-            (
-                output_dir
-                / f"{output_component(schema)}_schema_links.md"
-            ).write_text(output, encoding="utf-8")
+            (output_dir / f"{output_component(schema)}_schema_links.md").write_text(
+                output, encoding="utf-8"
+            )
     except Exception:
         progress_bar.finish()
         raise

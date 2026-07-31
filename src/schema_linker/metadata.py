@@ -44,12 +44,8 @@ def collect_declared_links(
         ):
             if constraint.referred_table.name not in selected_tables:
                 continue
-            from_columns = tuple(
-                element.parent.name for element in constraint.elements
-            )
-            to_columns = tuple(
-                element.column.name for element in constraint.elements
-            )
+            from_columns = tuple(element.parent.name for element in constraint.elements)
+            to_columns = tuple(element.column.name for element in constraint.elements)
             links.append(
                 DeclaredLink(
                     table.name,
@@ -109,9 +105,7 @@ def collect_column_refs(
     return refs
 
 
-def _load_row_counts(
-    conn: Connection, tables: list[Table]
-) -> dict[str, int | None]:
+def _load_row_counts(conn: Connection, tables: list[Table]) -> dict[str, int | None]:
     """Cheap row counts per table, using catalog estimates for very large tables.
 
     Returns ``None`` for a table whose exact COUNT(*) is unavailable (timed out).
@@ -206,9 +200,7 @@ def get_unique_column_names(table: Table) -> set[str]:
 
 def get_type_group(column: Any) -> str:
     column_type = column.type
-    if isinstance(
-        column_type, (Integer, BigInteger, SmallInteger, Numeric, Float)
-    ):
+    if isinstance(column_type, (Integer, BigInteger, SmallInteger, Numeric, Float)):
         return "numeric"
     if isinstance(column_type, (String, Text)):
         return "string"
@@ -219,8 +211,4 @@ def get_type_group(column: Any) -> str:
 
 def is_id_like(column_name: str) -> bool:
     lower_name = column_name.lower()
-    return (
-        lower_name == "id"
-        or lower_name.endswith("_id")
-        or lower_name.endswith("id")
-    )
+    return lower_name == "id" or lower_name.endswith("_id") or lower_name.endswith("id")

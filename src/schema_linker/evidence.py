@@ -53,9 +53,7 @@ def get_notes(
     source: ColumnRef, target: ColumnRef, options: SchemaLinkOptions
 ) -> list[str]:
     notes: list[str] = []
-    if is_low_cardinality(source, options) or is_low_cardinality(
-        target, options
-    ):
+    if is_low_cardinality(source, options) or is_low_cardinality(target, options):
         notes.append("low cardinality")
     else:
         notes.append("moderate cardinality")
@@ -76,9 +74,7 @@ def get_cardinality_evidence(
         >= 0.8
     ):
         evidence.append("similar distinct counts")
-    if is_low_cardinality(left, options) or is_low_cardinality(
-        right, options
-    ):
+    if is_low_cardinality(left, options) or is_low_cardinality(right, options):
         evidence.append("low cardinality")
     elif left.is_id_like or right.is_id_like:
         evidence.append("moderate ID-like cardinality")
@@ -87,9 +83,7 @@ def get_cardinality_evidence(
     return tuple(evidence)
 
 
-def get_name_evidence(
-    left: ColumnRef, right: ColumnRef
-) -> tuple[str, ...]:
+def get_name_evidence(left: ColumnRef, right: ColumnRef) -> tuple[str, ...]:
     left_name = normalize_name(left.column)
     right_name = normalize_name(right.column)
     left_tokens = name_tokens(left.column)
@@ -100,9 +94,7 @@ def get_name_evidence(
     evidence: list[str] = []
     if left_name == right_name and left_name != "id":
         evidence.append("name match")
-    if (
-        left_table in right_tokens and left.column.lower() == "id"
-    ) or (
+    if (left_table in right_tokens and left.column.lower() == "id") or (
         right_table in left_tokens and right.column.lower() == "id"
     ):
         evidence.append("table-name id match")
@@ -117,9 +109,7 @@ def get_name_evidence(
     return tuple(dict.fromkeys(evidence))
 
 
-def is_primary_lsh_target(
-    ref: ColumnRef, options: SchemaLinkOptions
-) -> bool:
+def is_primary_lsh_target(ref: ColumnRef, options: SchemaLinkOptions) -> bool:
     return ref.is_id_like and not is_low_cardinality(ref, options)
 
 
@@ -174,9 +164,7 @@ def load_limited_distinct_values(
     return values
 
 
-def is_low_cardinality(
-    ref: ColumnRef, options: SchemaLinkOptions
-) -> bool:
+def is_low_cardinality(ref: ColumnRef, options: SchemaLinkOptions) -> bool:
     return (
         ref.cardinality_ratio <= options.low_cardinality_ratio
         or ref.distinct_count <= 3
@@ -188,9 +176,7 @@ def normalize_name(value: str) -> str:
 
 
 def name_tokens(value: str) -> set[str]:
-    tokens = {
-        token for token in re.split(r"[^a-z0-9]+", value.lower()) if token
-    }
+    tokens = {token for token in re.split(r"[^a-z0-9]+", value.lower()) if token}
     normalized = normalize_name(value)
     if normalized.endswith("id") and normalized != "id":
         tokens.add(normalized[:-2])

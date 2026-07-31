@@ -118,9 +118,9 @@ def get_distinct_candidate_columns(
     name_candidates: list[CandidatePair],
     options: SchemaLinkOptions,
 ) -> set[tuple[str, str]]:
-    candidate_columns = {
-        candidate.left.key for candidate in name_candidates
-    } | {candidate.right.key for candidate in name_candidates}
+    candidate_columns = {candidate.left.key for candidate in name_candidates} | {
+        candidate.right.key for candidate in name_candidates
+    }
     for ref in column_refs.values():
         if is_primary_lsh_target(ref, options):
             candidate_columns.add(ref.key)
@@ -245,15 +245,12 @@ def get_lsh_candidates(
         num_perm=options.minhash_permutations,
     )
     ensemble.index(
-        (key, minhashes[key], len(distinct_sets[key]))
-        for key in sorted(minhashes)
+        (key, minhashes[key], len(distinct_sets[key])) for key in sorted(minhashes)
     )
 
     candidates: list[CandidatePair] = []
     for left_key, minhash in sorted(minhashes.items()):
-        for right_key in ensemble.query(
-            minhash, len(distinct_sets[left_key])
-        ):
+        for right_key in ensemble.query(minhash, len(distinct_sets[left_key])):
             if left_key == right_key:
                 continue
             first_key, second_key = sorted([left_key, right_key])
@@ -264,9 +261,7 @@ def get_lsh_candidates(
             if frozenset({left.key, right.key}) in declared_pairs:
                 continue
             candidates.append(
-                CandidatePair(
-                    left, right, ("minhash containment candidate",)
-                )
+                CandidatePair(left, right, ("minhash containment candidate",))
             )
     return candidates
 
@@ -279,9 +274,7 @@ def merge_candidates(candidates: list[CandidatePair]) -> list[CandidatePair]:
         if existing is None:
             merged[key] = candidate
             continue
-        evidence = tuple(
-            sorted(set(existing.evidence) | set(candidate.evidence))
-        )
+        evidence = tuple(sorted(set(existing.evidence) | set(candidate.evidence)))
         merged[key] = CandidatePair(existing.left, existing.right, evidence)
     return sorted(
         merged.values(),
