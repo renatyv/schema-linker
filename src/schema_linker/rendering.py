@@ -15,6 +15,7 @@ def render_markdown(
     declared_links: list[DeclaredLink],
     inferred_links: list[InferredLink],
     show_evidence: bool = False,
+    show_declared_links: bool = False,
 ) -> str:
     lines = [
         "# Schema Links",
@@ -23,23 +24,22 @@ def render_markdown(
         f"- dialect: {dialect}",
         f"- database: {database}",
         f"- schema: {schema}",
-        "",
-        "## Declared PK/FK Links",
-        "",
     ]
-    if declared_links:
-        for link in declared_links:
-            from_label = ", ".join(
-                f"{link.from_table}.{column}" for column in link.from_columns
-            )
-            to_label = ", ".join(
-                f"{link.to_table}.{column}" for column in link.to_columns
-            )
-            lines.append(f"{from_label} -> {to_label}")
-    else:
-        lines.append("No declared PK/FK links found.")
+    if show_declared_links:
+        lines += ["", "## Declared PK/FK Links", ""]
+        if declared_links:
+            for link in declared_links:
+                from_label = ", ".join(
+                    f"{link.from_table}.{column}" for column in link.from_columns
+                )
+                to_label = ", ".join(
+                    f"{link.to_table}.{column}" for column in link.to_columns
+                )
+                lines.append(f"{from_label} -> {to_label}")
+        else:
+            lines.append("No declared PK/FK links found.")
 
-    lines.extend(["", "## Inferred Links", ""])
+    lines += ["", "## Inferred Links", ""]
     lines.extend(render_inferred_section(declared_links, inferred_links, show_evidence))
 
     return "\n".join(lines).rstrip() + "\n"

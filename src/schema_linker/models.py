@@ -19,6 +19,7 @@ class SchemaLinkOptions:
     schema: str | None = None
     include_technical_tables: bool = False
     show_evidence: bool = False
+    show_declared_links: bool = False
 
 
 @dataclass(frozen=True)

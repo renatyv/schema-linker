@@ -1,6 +1,6 @@
 [project]
 name = "schema-linker"
-version = "0.0.1"
+version = "0.0.2"
 description = "Discover declared PK/FK joins and inferred join candidates across database tables for text-to-SQL and query authoring."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -10,7 +10,7 @@ dependencies = [
     "datasketch>=1.6",
     "sqlalchemy>=2.0",
     "pymysql>=1.1",
-    "psycopg>=3.2",
+    "psycopg[binary]>=3.2",
     "duckdb-engine>=0.13"
 ]
 classifiers = [

@@ -33,7 +33,7 @@ The output directory defaults to the database name (`<db_name>/`). For SQLite/Du
 
 The schema links `.md` file contains:
 
-- Declared primary-key and foreign-key links from database constraints.
+- Declared primary-key and foreign-key links from database constraints. Omitted by default to save tokens; include them with `--show-declared-links`.
 - Inferred links from name, type, cardinality, and containment evidence.
 - Evidence labels for each inferred join candidate. Omitted by default to save tokens; include them with `--show-evidence`.
 
@@ -53,7 +53,7 @@ A link survives only when name, type, cardinality, and containment agree — whi
 
 ## Sample Output
 
-This is the real report produced by the [runnable example](#runnable-example) below (a tiny SQLite shop database):
+This is the real report produced by the [runnable example](#runnable-example) below (a tiny SQLite shop database). By default the Declared PK/FK Links section is omitted to save tokens:
 
 ````markdown
 # Schema Links
@@ -63,11 +63,6 @@ This is the real report produced by the [runnable example](#runnable-example) be
 - database: examples/shop.sqlite
 - schema: main
 
-## Declared PK/FK Links
-
-order_lines.order_id -> orders.order_id
-orders.customer_id -> customers.customer_id
-
 ## Inferred Links
 
 ### customers.customer_id
@@ -75,7 +70,16 @@ orders.customer_id -> customers.customer_id
 - declared: orders.customer_id
 ````
 
-- **Declared PK/FK Links** come straight from database constraints — the safe, guaranteed joins.
+Add `--show-declared-links` to prepend the declared section at the top:
+
+````markdown
+## Declared PK/FK Links
+
+order_lines.order_id -> orders.order_id
+orders.customer_id -> customers.customer_id
+````
+
+- **Declared PK/FK Links** come straight from database constraints — the safe, guaranteed joins. Declared links are always used to group the inferred links below; the section itself is optional.
 - **Inferred Links** are grouped by shared value domain. Under each anchor, `inferred:` lists new join candidates and `declared:` lists columns already covered by a foreign key (shown for context).
 
 Here `support_tickets.customer_id` is flagged as a likely join onto `customers.customer_id` even though there is no FK constraint — exactly the case text-to-SQL agents usually have to guess.
@@ -183,6 +187,7 @@ Options:
 - `--containment-threshold 0.8`: minimum exact containment for inferred links.
 - `--max-distinct-values 10000`: maximum distinct values loaded per candidate column.
 - `--show-evidence`: include evidence labels on inferred links (off by default to save tokens).
+- `--show-declared-links`: include the Declared PK/FK Links section (off by default to save tokens; declared links are still used to group inferred links).
 
 ## Python API
 

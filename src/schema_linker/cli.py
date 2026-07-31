@@ -48,6 +48,14 @@ def build_arg_parser(prog: str | None = None) -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--show-declared-links",
+        action="store_true",
+        help=(
+            "Include the Declared PK/FK Links section. Omitted by default to "
+            "save tokens; declared links are still used to group inferred links."
+        ),
+    )
+    parser.add_argument(
         "--containment-threshold",
         type=float,
         default=0.8,
@@ -89,6 +97,7 @@ def main(argv: list[str] | None = None, prog: str | None = None) -> int:
         schema=resolve_schema(args),
         include_technical_tables=args.include_technical_tables,
         show_evidence=args.show_evidence,
+        show_declared_links=args.show_declared_links,
     )
     engine = create_engine(url)
     progress_bar = ProgressBar("Linking", 0)

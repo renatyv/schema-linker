@@ -3,7 +3,7 @@ Goal: find join-candidate column pairs across tables without scanning every colu
 
 # Expected Result
 A separate `.md` file with potential links:
-- PK/FK connections.
+- PK/FK connections. Omitted from the output by default to save tokens; surfaced with `--show-declared-links`. Declared links are always used internally to group inferred links.
 - Advanced search for additional schema links, using the pipeline described below.
 
 # Advanced Schema-Linking Pipeline
@@ -56,9 +56,11 @@ Do not include inferred links if they have fewer than three pieces of evidence. 
 
 Evidence labels are omitted from the output by default to save tokens. They can be surfaced on demand with the `--show-evidence` flag, which attaches the supporting evidence to each inferred column. Evidence is pairwise, so it is shown per column (from that column's strongest inferred edge) rather than aggregated across the whole cluster, which would merge mutually-exclusive cardinality labels and lose the link to a specific column.
 
+The Declared PK/FK Links section is omitted from the output by default to save tokens. It can be surfaced on demand with the `--show-declared-links` flag. Declared links are always used to group inferred links regardless of whether the section is shown, so the inferred clustering is unaffected.
+
 Inferred links are grouped by shared value domain: columns that join to the same primary key (or simply share a value set) form one cluster. Each cluster is headed by its anchor primary key when one exists; members already covered by a declared FK are listed separately as context, and only genuinely new inferred columns are the signal. Clusters whose every column is already declared are omitted because they add no new information. The pairwise explosion from transitive containment is collapsed this way.
 
-Output example:
+Output example (`--show-declared-links` adds the first section; by default only the inferred links below are written):
 ```
 - version: 0.1.0
 - dialect: mariadb
