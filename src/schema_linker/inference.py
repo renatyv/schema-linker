@@ -136,6 +136,7 @@ def get_triaged_refs(
         if (
             ref.cardinality_ratio >= options.unique_drop_ratio
             and not ref.is_primary_or_unique
+            and not ref.is_id_like
         ):
             continue
         refs[key] = ref
