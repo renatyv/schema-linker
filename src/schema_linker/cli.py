@@ -65,7 +65,10 @@ def build_arg_parser(prog: str | None = None) -> argparse.ArgumentParser:
         "--max-distinct-values",
         type=int,
         default=10_000,
-        help="Maximum distinct values to load per candidate column.",
+        help=(
+            "Maximum distinct values to load per candidate column. Columns above "
+            "the cap are verified with an exact SQL containment check instead."
+        ),
     )
     parser.add_argument(
         "--query-timeout",

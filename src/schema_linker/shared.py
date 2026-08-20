@@ -47,6 +47,36 @@ def is_technical_table(table_name: str) -> bool:
     return table_name.lower() in TECHNICAL_TABLES
 
 
+# Identifiers that never need quoting in any supported dialect.
+_PLAIN_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+# Dialects whose standard quote character is not the ANSI double quote.
+_BACKTICK_DIALECTS = frozenset({"mysql", "mariadb", "bigquery"})
+_BRACKET_DIALECTS = frozenset({"mssql"})
+
+
+def quote_identifier(name: str, dialect: str) -> str:
+    """Quote an SQL identifier only when the dialect requires it.
+
+    Dialects default to the ANSI double quote (PostgreSQL, Oracle, SQLite,
+    DuckDB, Snowflake, ...); MySQL/MariaDB/BigQuery use backticks and SQL
+    Server uses square brackets. Embedded quote characters are escaped by
+    doubling (or ``]]`` for brackets).
+    """
+    if _PLAIN_IDENTIFIER.match(name):
+        return name
+    if dialect in _BACKTICK_DIALECTS:
+        return "`" + name.replace("`", "``") + "`"
+    if dialect in _BRACKET_DIALECTS:
+        return "[" + name.replace("]", "]]") + "]"
+    return '"' + name.replace('"', '""') + '"'
+
+
+def quote_qualified(table: str, column: str, dialect: str) -> str:
+    """Render a ``table.column`` label with each part quoted as needed."""
+    return f"{quote_identifier(table, dialect)}.{quote_identifier(column, dialect)}"
+
+
 def parse_table_set(value: str | None) -> frozenset[str] | None:
     if not value:
         return None

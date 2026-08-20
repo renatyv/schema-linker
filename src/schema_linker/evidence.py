@@ -171,8 +171,49 @@ def is_low_cardinality(ref: ColumnRef, options: SchemaLinkOptions) -> bool:
     )
 
 
+_FLAG_VALUES = frozenset(
+    {"0", "1", "y", "n", "t", "f", "true", "false", "yes", "no"}
+)
+
+
+def is_flag_like(ref: ColumnRef, values: set[Any] | None) -> bool:
+    """True when a column looks like a boolean/flag domain.
+
+    Either it holds at most two distinct values, or every loaded value is a
+    boolean-ish string (0/1, Y/N, true/false, yes/no).
+    """
+    if ref.distinct_count <= 2:
+        return True
+    if values is None:
+        return False
+    return all(
+        isinstance(value, str) and value.lower() in _FLAG_VALUES for value in values
+    )
+
+
+def is_flag_pair(
+    left: ColumnRef,
+    right: ColumnRef,
+    left_values: set[Any] | None,
+    right_values: set[Any] | None,
+) -> bool:
+    """True when both sides are boolean/flag columns and neither side is a key.
+
+    Joining two independent Y/N flags is a cross-product trap rather than a
+    join path, so such pairs are dropped — unless one side is primary/unique
+    (a two-row lookup table's key column legitimately has 1-2 values).
+    """
+    if left.is_primary_or_unique or right.is_primary_or_unique:
+        return False
+    return is_flag_like(left, left_values) and is_flag_like(right, right_values)
+
+
 def normalize_name(value: str) -> str:
     return re.sub(r"[^a-z0-9]", "", value.lower())
+
+
+# "sname"-style abbreviations: one letter + a common join-column word.
+_ABBREVIATED_TOKEN = re.compile(r"^[a-z](?P<suffix>name|code)$")
 
 
 def name_tokens(value: str) -> set[str]:
@@ -181,6 +222,12 @@ def name_tokens(value: str) -> set[str]:
     if normalized.endswith("id") and normalized != "id":
         tokens.add(normalized[:-2])
         tokens.add("id")
+    # Expand single-letter abbreviations of common join-column words so that
+    # e.g. "sname" ("school name") still shares a token with "School Name".
+    for token in tuple(tokens):
+        match = _ABBREVIATED_TOKEN.match(token)
+        if match:
+            tokens.add(match.group("suffix"))
     return {singularize(token) for token in tokens if token}
 
 

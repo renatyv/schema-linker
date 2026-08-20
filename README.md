@@ -46,8 +46,8 @@ Declared links are read straight from the database's primary/foreign-key constra
 1. **Metadata** — skip FK-covered columns and pairs with mismatched data types.
 2. **Cardinality** — estimate `COUNT(DISTINCT col)`; drop near-unique free text, keep moderate, ID-like columns.
 3. **Name/type** — match column names (Levenshtein-style similarity) to find strong candidates worth a spot-check.
-4. **Containment** — extract distinct values only for the survivors, then use MinHash + LSH Ensemble to find one-way set containment (this handles unequal cardinalities, unlike Jaccard).
-5. **Verify** — confirm each candidate with an exact containment check and require at least three independent pieces of evidence.
+4. **Containment** — extract distinct values only for the survivors (capped by `--max-distinct-values`), then use MinHash + LSH Ensemble to find one-way set containment (this handles unequal cardinalities, unlike Jaccard).
+5. **Verify** — confirm each candidate with an exact containment check and require at least three independent pieces of evidence. Columns above the cap are verified with an exact SQL containment, and pairs of boolean/flag columns (Y/N, 0/1) are dropped as cross-product traps.
 
 A link survives only when name, type, cardinality, and containment agree — which is why evidence is reported per signal.
 
@@ -81,6 +81,7 @@ orders.customer_id -> customers.customer_id
 
 - **Declared PK/FK Links** come straight from database constraints — the safe, guaranteed joins. Declared links are always used to group the inferred links below; the section itself is optional.
 - **Inferred Links** are grouped by shared value domain. Under each anchor, `inferred:` lists new join candidates and `declared:` lists columns already covered by a foreign key (shown for context).
+- **Identifiers are copy-pasteable SQL**: each `table.column` label is quoted only when the name requires it, using the dialect's standard quote character — double quotes for PostgreSQL, Oracle, SQLite, and DuckDB; backticks for MySQL, MariaDB, and BigQuery; square brackets for SQL Server.
 
 Here `support_tickets.customer_id` is flagged as a likely join onto `customers.customer_id` even though there is no FK constraint — exactly the case text-to-SQL agents usually have to guess.
 
@@ -93,7 +94,7 @@ Add `--show-evidence` to see the signal behind each candidate (real output from 
 - declared: orders.customer_id
 ````
 
-Evidence labels report the *why* (`name match`, `table-name id match`, `shared name tokens`, `similar names`, `type match`, `minhash containment candidate`) and the *confidence* (`same distinct count`, `similar distinct counts`, `low cardinality`, `moderate cardinality`, `moderate ID-like cardinality`).
+Evidence labels report the *why* (`name match`, `table-name id match`, `shared name tokens`, `similar names`, `type match`, `minhash containment candidate`, `exact SQL containment`) and the *confidence* (`same distinct count`, `similar distinct counts`, `low cardinality`, `moderate cardinality`, `moderate ID-like cardinality`). `exact SQL containment` marks links verified in the database rather than against the in-memory value sample — typically columns with more distinct values than `--max-distinct-values`.
 
 ## Runnable Example
 

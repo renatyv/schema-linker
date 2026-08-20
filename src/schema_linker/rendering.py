@@ -5,6 +5,7 @@ import re
 from schema_linker import __version__
 from schema_linker.inference import link_rank_key
 from schema_linker.models import DeclaredLink, InferredLink
+from schema_linker.shared import quote_qualified
 
 
 def render_markdown(
@@ -30,17 +31,21 @@ def render_markdown(
         if declared_links:
             for link in declared_links:
                 from_label = ", ".join(
-                    f"{link.from_table}.{column}" for column in link.from_columns
+                    quote_qualified(link.from_table, column, dialect)
+                    for column in link.from_columns
                 )
                 to_label = ", ".join(
-                    f"{link.to_table}.{column}" for column in link.to_columns
+                    quote_qualified(link.to_table, column, dialect)
+                    for column in link.to_columns
                 )
                 lines.append(f"{from_label} -> {to_label}")
         else:
             lines.append("No declared PK/FK links found.")
 
     lines += ["", "## Inferred Links", ""]
-    lines.extend(render_inferred_section(declared_links, inferred_links, show_evidence))
+    lines.extend(
+        render_inferred_section(declared_links, inferred_links, show_evidence, dialect)
+    )
 
     return "\n".join(lines).rstrip() + "\n"
 
@@ -49,6 +54,7 @@ def render_inferred_section(
     declared_links: list[DeclaredLink],
     inferred_links: list[InferredLink],
     show_evidence: bool,
+    dialect: str = "sqlite",
 ) -> list[str]:
     """Render inferred links grouped by shared value domain.
 
@@ -61,7 +67,7 @@ def render_inferred_section(
     if not inferred_links:
         return ["No inferred links found."]
 
-    fk_nodes, pk_nodes = _declared_nodes(declared_links)
+    fk_nodes, pk_nodes = _declared_nodes(declared_links, dialect)
 
     edges: list[tuple[str, str]] = []
     for link in declared_links:
@@ -69,10 +75,20 @@ def render_inferred_section(
             link.from_columns, link.to_columns, strict=False
         ):
             edges.append(
-                (f"{link.from_table}.{from_column}", f"{link.to_table}.{to_column}")
+                (
+                    quote_qualified(link.from_table, from_column, dialect),
+                    quote_qualified(link.to_table, to_column, dialect),
+                )
             )
     for link in inferred_links:
-        edges.append((link.source.label, link.target.label))
+        edges.append(
+            (
+                quote_qualified(
+                    link.source.table, link.source.column, dialect
+                ),
+                quote_qualified(link.target.table, link.target.column, dialect),
+            )
+        )
 
     known = fk_nodes | pk_nodes
     blocks: list[tuple[int, str, list[str]]] = []
@@ -81,7 +97,7 @@ def render_inferred_section(
         cluster_links = [
             link
             for link in inferred_links
-            if link.source.label in member_set and link.target.label in member_set
+            if set(_link_nodes(link, dialect)) <= member_set
         ]
         if not cluster_links:
             continue
@@ -100,7 +116,7 @@ def render_inferred_section(
         if show_evidence:
             block.append("- inferred:")
             for member in new_members:
-                evidence = _best_evidence_for(member, cluster_links)
+                evidence = _best_evidence_for(member, cluster_links, dialect)
                 suffix = f": {', '.join(evidence)}" if evidence else ""
                 block.append(f"  - {member}{suffix}")
         else:
@@ -120,8 +136,16 @@ def render_inferred_section(
     return lines[:-1] if lines else []
 
 
+def _link_nodes(link: InferredLink, dialect: str) -> tuple[str, str]:
+    """Quoted endpoint labels of an inferred link; must match graph node ids."""
+    return (
+        quote_qualified(link.source.table, link.source.column, dialect),
+        quote_qualified(link.target.table, link.target.column, dialect),
+    )
+
+
 def _best_evidence_for(
-    member: str, cluster_links: list[InferredLink]
+    member: str, cluster_links: list[InferredLink], dialect: str
 ) -> tuple[str, ...]:
     """Evidence from the strongest inferred edge touching ``member``.
 
@@ -132,7 +156,7 @@ def _best_evidence_for(
     touching = [
         link
         for link in cluster_links
-        if link.source.label == member or link.target.label == member
+        if member in _link_nodes(link, dialect)
     ]
     if not touching:
         return ()
@@ -141,14 +165,15 @@ def _best_evidence_for(
 
 def _declared_nodes(
     declared_links: list[DeclaredLink],
+    dialect: str,
 ) -> tuple[set[str], set[str]]:
     fk_nodes: set[str] = set()
     pk_nodes: set[str] = set()
     for link in declared_links:
         for column in link.from_columns:
-            fk_nodes.add(f"{link.from_table}.{column}")
+            fk_nodes.add(quote_qualified(link.from_table, column, dialect))
         for column in link.to_columns:
-            pk_nodes.add(f"{link.to_table}.{column}")
+            pk_nodes.add(quote_qualified(link.to_table, column, dialect))
     return fk_nodes, pk_nodes
 
 

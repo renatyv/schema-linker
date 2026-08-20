@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from datasketch import MinHash, MinHashLSHEnsemble
-from sqlalchemy import Table, select
+from sqlalchemy import Table, func, select
 from sqlalchemy.engine import Connection
 
 from schema_linker import query_timeout
@@ -11,6 +11,7 @@ from schema_linker.evidence import (
     get_cardinality_evidence,
     get_name_evidence,
     get_notes,
+    is_flag_pair,
     is_primary_lsh_target,
     is_strong_name_candidate,
     normalize_value,
@@ -27,6 +28,7 @@ from schema_linker.models import (
     SchemaLinkOptions,
     SchemaLinkProgress,
 )
+from schema_linker.shared import quote_qualified
 
 
 def infer_links(
@@ -65,13 +67,27 @@ def infer_links(
     for candidate in candidates:
         left_values = distinct_sets.get(candidate.left.key)
         right_values = distinct_sets.get(candidate.right.key)
-        if not left_values or not right_values:
+        if is_flag_pair(candidate.left, candidate.right, left_values, right_values):
             continue
-        for source, target, source_values, target_values in (
-            (candidate.left, candidate.right, left_values, right_values),
-            (candidate.right, candidate.left, right_values, left_values),
+        for source, target in (
+            (candidate.left, candidate.right),
+            (candidate.right, candidate.left),
         ):
-            containment = len(source_values & target_values) / len(source_values)
+            source_values = distinct_sets.get(source.key)
+            target_values = distinct_sets.get(target.key)
+            if source_values and target_values:
+                containment = len(source_values & target_values) / len(source_values)
+                extra_evidence: tuple[str, ...] = ()
+            else:
+                # A side exceeded --max-distinct-values (or its load timed
+                # out), so in-memory containment is unavailable; verify with
+                # an exact SQL containment instead of dropping the pair.
+                containment = exact_containment(
+                    conn, table_by_name, source, target
+                )
+                if containment is None:
+                    continue
+                extra_evidence = ("exact SQL containment",)
             if containment < options.containment_threshold:
                 continue
             if not plausible_direction(source, target, candidate.evidence):
@@ -80,6 +96,7 @@ def infer_links(
                 sorted(
                     set(candidate.evidence)
                     | set(get_cardinality_evidence(source, target, options))
+                    | set(extra_evidence)
                 )
             )
             if len(evidence) < 3:
@@ -92,6 +109,45 @@ def infer_links(
                 links[key] = link
 
     return sorted(links.values(), key=link_rank_key)
+
+
+def exact_containment(
+    conn: Connection,
+    table_by_name: dict[str, Table],
+    source: ColumnRef,
+    target: ColumnRef,
+) -> float | None:
+    """Exact containment of source values in target values, computed in SQL.
+
+    Used for pairs where either column's distinct values were not loaded into
+    memory (distinct count above ``--max-distinct-values``): the anti-join
+    counts source values with no target match without materializing either
+    set. Returns ``None`` when the check itself fails or times out, in which
+    case the caller skips this direction.
+    """
+    source_column = table_by_name[source.table].c[source.column]
+    target_column = table_by_name[target.table].c[target.column]
+    source_sq = (
+        select(source_column).where(source_column.is_not(None)).distinct().subquery()
+    )
+    target_sq = (
+        select(target_column).where(target_column.is_not(None)).distinct().subquery()
+    )
+    source_expr = next(iter(source_sq.c))
+    target_expr = next(iter(target_sq.c))
+    unmatched = (
+        select(func.count())
+        .select_from(source_sq.outerjoin(target_sq, source_expr == target_expr))
+        .where(target_expr.is_(None))
+    )
+    try:
+        missing = int(query_timeout.execute(conn, unmatched).scalar_one())
+    except query_timeout.QueryTimeout:
+        return None
+    except Exception:
+        query_timeout.recover_connection(conn)
+        return None
+    return 1.0 - missing / source.distinct_count
 
 
 def get_declared_column_pairs(
@@ -186,20 +242,22 @@ def load_distinct_sets(
 ) -> dict[tuple[str, str], set[Any]]:
     distinct_sets: dict[tuple[str, str], set[Any]] = {}
     sorted_candidate_columns = sorted(candidate_columns)
+    dialect = conn.dialect.name
     for index, key in enumerate(sorted_candidate_columns, start=1):
         ref = column_refs[key]
+        label = quote_qualified(ref.table, ref.column, dialect)
         if progress is not None:
             progress(
                 index - 1,
                 len(sorted_candidate_columns),
-                f"loading {ref.label}",
+                f"loading {label}",
             )
         if ref.distinct_count > max_distinct_values:
             if progress is not None:
                 progress(
                     index,
                     len(sorted_candidate_columns),
-                    f"skipped {ref.label}",
+                    f"skipped {label}",
                 )
             continue
         table = table_by_name[ref.table]
@@ -220,7 +278,7 @@ def load_distinct_sets(
             progress(
                 index,
                 len(sorted_candidate_columns),
-                f"loaded {ref.label}",
+                f"loaded {label}",
             )
     return distinct_sets
 

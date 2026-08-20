@@ -34,6 +34,7 @@ Only on columns surviving Stage 2–3:
 ```sql
 SELECT DISTINCT col FROM table;
 ```
+Columns with more distinct values than `--max-distinct-values` (default 10,000) are not extracted; pairs touching them fall through to the exact SQL check in Stage 6 instead.
 
 ## Stage 5: MinHash + LSH Ensemble
 Use the `datasketch` Python library.
@@ -50,7 +51,9 @@ SELECT COUNT(*) FROM (
   WHERE a.col NOT IN (SELECT col FROM t2)
 ) x;
 ```
-Confirms or rejects LSH candidates; catches approximation false positives.
+Confirms or rejects LSH candidates; catches approximation false positives. When either column was not loaded into memory (distinct count above the cap), the exact containment is computed in SQL as an anti-join instead of being skipped, so oversized-but-real relationships are still found.
+
+Pairs where both columns are boolean/flag domains (at most two distinct values, or values drawn from 0/1, Y/N, true/false, yes/no) are dropped unless one side is a primary/unique key: joining two independent flags is a cross-product trap, not a join path.
 
 Do not include inferred links if they have fewer than three pieces of evidence. Sort inferred links by evidence: more evidence ranks higher in the list.
 

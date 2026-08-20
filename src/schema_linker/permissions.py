@@ -191,6 +191,10 @@ def format_warnings(report: PermissionReport) -> list[str]:
         warnings.append(
             "  Row-count estimates may fall back to exact COUNT(*); column histograms will be skipped."
         )
+        if report.dialect == "sqlite":
+            warnings.append(
+                "  Fix: run ANALYZE on the database to populate sqlite_stat1."
+            )
 
     return warnings
 

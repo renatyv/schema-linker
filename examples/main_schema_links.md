@@ -1,6 +1,6 @@
 # Schema Links
 
-- version: 0.0.1
+- version: 0.0.2
 - dialect: sqlite
 - database: examples/shop.sqlite
 - schema: main
