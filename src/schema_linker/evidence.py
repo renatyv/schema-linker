@@ -6,7 +6,7 @@ from decimal import Decimal
 from difflib import SequenceMatcher
 from typing import Any
 
-from sqlalchemy import Table, select
+from sqlalchemy import String, Table, select, type_coerce
 from sqlalchemy.engine import Connection
 
 from schema_linker import query_timeout
@@ -154,9 +154,15 @@ def load_limited_distinct_values(
 ) -> set[Any]:
     column = table.c[column_name]
     values = set()
+    # Fetch raw storage values: reflected types can lie (e.g. a DATE column
+    # holding timestamps), which makes SQLAlchemy's result processors raise
+    # before normalize_value ever sees the row.
     for row in query_timeout.execute(
         conn,
-        select(column).where(column.is_not(None)).distinct().limit(limit),
+        select(type_coerce(column, String))
+        .where(column.is_not(None))
+        .distinct()
+        .limit(limit),
     ):
         value = normalize_value(row[0])
         if value is not None:

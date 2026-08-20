@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from datasketch import MinHash, MinHashLSHEnsemble
-from sqlalchemy import Table, func, select
+from sqlalchemy import String, Table, func, select, type_coerce
 from sqlalchemy.engine import Connection
 
 from schema_linker import query_timeout
@@ -263,10 +263,15 @@ def load_distinct_sets(
         table = table_by_name[ref.table]
         column = table.c[ref.column]
         try:
+            # Raw storage values, bypassing result processors — reflected
+            # types can lie about the data (DATE columns holding timestamps).
             values = {
                 normalize_value(row[0])
                 for row in query_timeout.execute(
-                    conn, select(column).where(column.is_not(None)).distinct()
+                    conn,
+                    select(type_coerce(column, String))
+                    .where(column.is_not(None))
+                    .distinct(),
                 )
                 if normalize_value(row[0]) is not None
             }

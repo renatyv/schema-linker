@@ -1,6 +1,6 @@
 [project]
 name = "schema-linker"
-version = "0.0.4"
+version = "0.0.5"
 description = "Discover declared PK/FK joins and inferred join candidates across database tables for text-to-SQL and query authoring."
 readme = "README.md"
 requires-python = ">=3.10"
