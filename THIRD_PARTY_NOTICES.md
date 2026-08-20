@@ -21,6 +21,10 @@ This file is informational and is not legal advice. Check each upstream project 
 | `duckdb-engine` | Required (DuckDB driver) | MIT |
 | `duckdb` | Transitive dependency of `duckdb-engine` | MIT |
 | `packaging` | Transitive dependency of `duckdb-engine` | Apache-2.0 or BSD-2-Clause |
+| `rich` | Required (progress bars) | MIT |
+| `markdown-it-py` | Transitive dependency of `rich` | MIT |
+| `mdurl` | Transitive dependency of `markdown-it-py` | MIT |
+| `pygments` | Transitive dependency of `rich` | BSD-2-Clause |
 
 The PostgreSQL, MySQL/MariaDB, and DuckDB drivers are installed by default and are only used when connecting to their respective databases. The LGPL-licensed `psycopg` driver is a runtime dependency; SQLite needs no external driver.
 

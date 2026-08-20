@@ -1,65 +1,57 @@
 from __future__ import annotations
 
-import shutil
 import sys
 from typing import TextIO
 
+from rich.console import Console
+from rich.progress import (
+    BarColumn,
+    MofNCompleteColumn,
+    Progress,
+    SpinnerColumn,
+    TaskID,
+    TextColumn,
+)
+
 
 class ProgressBar:
+    """Progress bar for one linking phase, rendered by rich.progress."""
+
     def __init__(self, label: str, total: int, stream: TextIO | None = None) -> None:
         self.label = label
         self.total = total
-        self.stream = stream or sys.stderr
-        self.current = 0
-        self.item = ""
-        self.enabled = total > 0 and self.stream.isatty()
-        self._last_width = 0
+        self._console = Console(file=stream or sys.stderr)
+        self.enabled = total > 0 and self._console.is_terminal
+        self._progress = Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            BarColumn(),
+            MofNCompleteColumn(),
+            TextColumn("{task.fields[item]}"),
+            console=self._console,
+            transient=True,
+        )
+        self._task: TaskID | None = None
 
     def start(self, item: str = "") -> None:
-        self.current = 0
-        self.item = item
-        self.render()
+        if not self.enabled:
+            return
+        self._task = self._progress.add_task(self.label, total=self.total, item=item)
+        self._progress.start()
 
     def update(self, current: int, item: str = "") -> None:
-        self.current = min(max(current, 0), self.total)
-        self.item = item
-        self.render()
+        if self._task is None:
+            return
+        self._progress.update(self._task, completed=current, item=item)
 
     def advance(self, item: str = "") -> None:
-        self.update(self.current + 1, item)
+        if self._task is None:
+            return
+        self._progress.advance(self._task, item=item)
 
     def finish(self, message: str | None = None) -> None:
         if not self.enabled:
             return
+        self._progress.stop()
         if message:
-            self._write_line(message)
-            self.stream.write("\n")
-            self.stream.flush()
-            self._last_width = 0
-        else:
-            self._clear_line()
-
-    def render(self) -> None:
-        if not self.enabled:
-            return
-        columns = shutil.get_terminal_size(fallback=(80, 24)).columns
-        bar_width = 24
-        completed = round(bar_width * self.current / self.total)
-        bar = "#" * completed + "-" * (bar_width - completed)
-        line = f"{self.label} [{bar}] {self.current}/{self.total}"
-        if self.item:
-            line += f" {self.item}"
-        if len(line) >= columns:
-            line = line[: max(columns - 1, 0)]
-        self._write_line(line)
-
-    def _write_line(self, line: str) -> None:
-        padding = " " * max(self._last_width - len(line), 0)
-        self.stream.write(f"\r{line}{padding}")
-        self.stream.flush()
-        self._last_width = len(line)
-
-    def _clear_line(self) -> None:
-        self.stream.write("\r" + " " * self._last_width + "\r")
-        self.stream.flush()
-        self._last_width = 0
+            self._console.print(message)
